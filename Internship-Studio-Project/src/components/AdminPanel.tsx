@@ -50,9 +50,11 @@ import {
   Globe,
 } from "lucide-react";
 
-/* ---------- NEW IMPORTS ---------- */
-import EducationBoardsTab from "../components/EducationBoardsTab";
-import UsersTab            from "../components/UsersTab";
+/* ---------- TAB IMPORTS ---------- */
+import EducationBoardsTab from "./EducationBoardsTab";
+import UsersTab            from "./UsersTab";
+import { AdminCollegeView } from "./AdminCollegeView";
+import { AdminRolesView }  from "./AdminRolesView";
 
 /* ---------- TYPES ---------- */
 interface College {
@@ -99,7 +101,6 @@ interface EducationBoard {
   affiliatedColleges: number;
 }
 
-/* ---------- PROPS ---------- */
 interface AdminPanelProps {
   onLogout: () => void;
 }
@@ -226,10 +227,10 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
             {/* ---------- VIEWS ---------- */}
             {activeView === "dashboard"   && <div>Dashboard cards...</div>}
             {activeView === "analytics"   && <div>Analytics...</div>}
-            {activeView === "colleges"    && <div>Colleges...</div>}
+            {activeView === "colleges"    && <AdminCollegeView colleges={colleges} setColleges={setColleges} />}
             {activeView === "boards"      && <EducationBoardsTab boards={educationBoards} setBoards={setEducationBoards} />}
             {activeView === "users"       && <UsersTab users={users} setUsers={setUsers} colleges={colleges} />}
-            {activeView === "roles"       && <div>Roles...</div>}
+            {activeView === "roles"       && <AdminRolesView />}
             {activeView === "settings"    && <div>Settings...</div>}
             {activeView === "database"    && <div>Database...</div>}
           </main>

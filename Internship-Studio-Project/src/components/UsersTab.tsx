@@ -58,7 +58,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
 
   return (
     <div className="grid lg:grid-cols-3 gap-6">
-      {/* LEFT - LIST */}
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
@@ -70,7 +69,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
               </div>
             </div>
           </CardHeader>
-
           <CardContent>
             <div className="space-y-4">
               {users.map((user) => (
@@ -88,7 +86,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
                         <Badge variant={user.status === "active" ? "default" : "secondary"}>{user.status}</Badge>
                         <Badge variant="outline">{user.role}</Badge>
                       </div>
-
                       <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-2"><Mail className="w-4 h-4" />{user.email}</div>
                         <div className="flex items-center gap-2"><Phone className="w-4 h-4" />{user.phone}</div>
@@ -97,15 +94,12 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
                           <div className="flex items-center gap-2"><School className="w-4 h-4" />{user.college}</div>
                         )}
                       </div>
-
                       {user.program && (
                         <div className="mt-2">
                           <Badge variant="outline" className="text-xs">{user.program}</Badge>
                         </div>
                       )}
                     </div>
-
-                    {/* ACTIONS */}
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
                       <Button variant="outline" size="sm" onClick={() => toggleStatus(user.id)}><Switch checked={user.status === "active"} /></Button>
@@ -119,7 +113,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
         </Card>
       </div>
 
-      {/* RIGHT - ADD FORM */}
       <div>
         <Card>
           <CardHeader>
@@ -128,23 +121,19 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
               Add New User
             </CardTitle>
           </CardHeader>
-
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Full Name *</Label>
               <Input placeholder="Enter full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
-
             <div className="space-y-2">
               <Label>Email *</Label>
               <Input type="email" placeholder="user@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
-
             <div className="space-y-2">
               <Label>Phone</Label>
               <Input placeholder="+91 98765 43210" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
-
             <div className="space-y-2">
               <Label>Role *</Label>
               <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
@@ -156,7 +145,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
                 </SelectContent>
               </Select>
             </div>
-
             {form.role === "Student" && (
               <>
                 <div className="space-y-2">
@@ -172,7 +160,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label>Program</Label>
                   <Select value={form.program} onValueChange={(v) => setForm({ ...form, program: v })}>
@@ -188,7 +175,6 @@ export default function UsersTab({ users, setUsers, colleges }: Props) {
                 </div>
               </>
             )}
-
             <Button onClick={handleAdd} className="w-full">
               Add User
             </Button>

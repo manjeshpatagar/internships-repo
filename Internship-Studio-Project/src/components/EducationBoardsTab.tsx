@@ -6,7 +6,6 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Switch } from "../components/ui/switch";
 import {
   ClipboardList,
   Building,
@@ -76,7 +75,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
 
   return (
     <div className="grid lg:grid-cols-3 gap-6">
-      {/* LEFT - LIST */}
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
@@ -88,7 +86,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
               </div>
             </div>
           </CardHeader>
-
           <CardContent>
             <div className="space-y-4">
               {boards.map((board) => (
@@ -103,24 +100,17 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                         </Badge>
                         <Badge variant="outline">{board.shortName}</Badge>
                       </div>
-
                       <p className="text-sm text-gray-600 mb-3">{board.description}</p>
-
                       <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-2"><Building className="w-4 h-4" />{board.type}</div>
                         <div className="flex items-center gap-2"><Globe className="w-4 h-4" />{board.country}</div>
                         <div className="flex items-center gap-2"><Calendar className="w-4 h-4" />Est. {board.established}</div>
                         <div className="flex items-center gap-2"><School className="w-4 h-4" />{board.affiliatedColleges} Colleges</div>
                       </div>
-
                       <div className="mt-2 text-sm text-gray-600">Website: {board.website}</div>
                     </div>
-
-                    {/* ACTIONS */}
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button>
-
-                      {/* STATUS TOGGLE (visual) */}
                       <Button
                         variant="outline"
                         size="sm"
@@ -138,7 +128,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                           }`}
                         />
                       </Button>
-
                       <Button
                         variant="outline"
                         size="sm"
@@ -156,7 +145,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
         </Card>
       </div>
 
-      {/* RIGHT - ADD FORM */}
       <div>
         <Card>
           <CardHeader>
@@ -165,7 +153,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
               Add New Education Board
             </CardTitle>
           </CardHeader>
-
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Board Name *</Label>
@@ -175,7 +162,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
-
             <div className="space-y-2">
               <Label>Short Name *</Label>
               <Input
@@ -184,7 +170,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 onChange={(e) => setForm({ ...form, shortName: e.target.value })}
               />
             </div>
-
             <div className="space-y-2">
               <Label>Description</Label>
               <Input
@@ -193,7 +178,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
-
             <div className="space-y-2">
               <Label>Type *</Label>
               <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
@@ -209,7 +193,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label>Country *</Label>
               <Select
@@ -229,7 +212,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label>Established Year</Label>
               <Input
@@ -238,7 +220,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 onChange={(e) => setForm({ ...form, established: e.target.value })}
               />
             </div>
-
             <div className="space-y-2">
               <Label>Website</Label>
               <Input
@@ -247,7 +228,6 @@ export default function EducationBoardsTab({ boards, setBoards }: Props) {
                 onChange={(e) => setForm({ ...form, website: e.target.value })}
               />
             </div>
-
             <Button onClick={handleAdd} className="w-full">
               Add Education Board
             </Button>
