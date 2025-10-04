@@ -7,6 +7,7 @@ import { Badge } from "./ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { AdminCollegeView } from "../components/AdminCollegeView";
 import {
   SidebarProvider,
   Sidebar,
@@ -50,6 +51,7 @@ import {
   ClipboardList,
   Globe
 } from "lucide-react";
+
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -544,7 +546,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
             )}
 
             {/* Colleges View */}
-            {activeView === "colleges" && (
+            {/* {activeView === "colleges" && (
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <Card>
@@ -698,6 +700,11 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
                 </Card>
               </div>
             </div>
+            )} */}
+
+            {/* Colleges View - Now using the separate component */}
+            {activeView === "colleges" && (
+              <AdminCollegeView colleges={colleges} setColleges={setColleges} />
             )}
 
             {/* Education Boards View */}
