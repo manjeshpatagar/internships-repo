@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "./ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { AdminCollegeView } from "../components/AdminCollegeView";
-import { AdminRolesView } from "../components/AdminRolesView";
+import AdminRolesView from "../components/AdminRolesView";
 import {
   SidebarProvider,
   Sidebar,
@@ -117,16 +117,7 @@ export function AdminPanel({ onLogout }: AdminPanelProps) {
       status: "active",
       programs: ["BCA", "MCA", "BSc CS"]
     },
-    {
-      id: "2", 
-      name: "Mumbai Institute of Technology",
-      location: "Mumbai, India",
-      type: "Private Institute",
-      established: "1985",
-      website: "mit.edu",
-      status: "active",
-      programs: ["BCA", "Diploma CS", "BSc IT"]
-    }
+
   ]);
 
   const [users, setUsers] = useState<User[]>([

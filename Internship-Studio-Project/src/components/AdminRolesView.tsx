@@ -1,189 +1,294 @@
-import { useState, useRef } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import React, { useState, useMemo } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
-import { Shield, Edit, Trash2, Plus, Save, X } from "lucide-react";
+import { Badge } from "../components/ui/badge";
+import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
 
-// --- Interfaces ---
-interface Permission {
-  resource: string;
-  actions: string[];
-  propertyLevel?: { [key: string]: string[] };
-}
+type RoleName = "Admin" | "HOD" | "Teacher" | "Mentor" | "Student";
+const ROLES: RoleName[] = ["Admin", "HOD", "Teacher", "Mentor", "Student"];
 
-interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: Permission[];
-  userCount: number;
-}
+type ResourceDef = { id: string; name: string; actions: string[]; properties: string[] };
+type RolePermissions = { actions: string[]; properties: string[] };
+type PermissionsByResource = Record<string, Record<RoleName, RolePermissions>>;
 
-// --- Resources ---
-const RESOURCES = [
-  { name: "College", actions: ["create","read","update","delete","activate","deactivate","draft"], properties:["college_id","name","address","city","state","pincode","thumbnail_image","website","status"] },
-  { name: "Department", actions: ["create","read","update","delete","activate","deactivate","draft"], properties:["dep_id","college_id","dep_name","dep_code","hod_id","status"] },
-  { name: "Semester", actions: ["create","read","update","delete","activate","deactivate","draft"], properties:["sem_id","dep_id","name","number","academic_year_id","status"] },
-  { name: "Subject", actions: ["create","read","update","delete","activate","deactivate","draft"], properties:["sub_id","sem_id","name","code","status"] },
-  { name: "Internship", actions: ["create","read","update","delete","apply","approve","reject","activate","deactivate"], properties:["internship_id","type","title","description","duration","start_date","end_date","status"] },
-  { name: "User", actions: ["create","read","update","delete","activate","deactivate","assign_role"], properties:["user_id","name","email","password","role","college_id","dep_id","status"] },
-  { name: "Study Material", actions: ["create","read","update","delete","activate","deactivate"], properties:["material_id","sub_id","title","file_url","uploaded_by","status"] },
-];
-
-// --- Default Permissions ---
-const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  Admin: RESOURCES.map(r => ({ resource: r.name, actions: [...r.actions], propertyLevel: { read: [...r.properties] } })),
-  HOD: RESOURCES.map(r => ({ resource: r.name, actions: ["read","update","activate","deactivate"], propertyLevel: { read: [...r.properties] } })),
-  Teacher: RESOURCES.map(r => ({ resource: r.name, actions: ["read","update"], propertyLevel: { read: [...r.properties] } })),
-  Student: RESOURCES.map(r => ({ resource: r.name, actions: ["read","apply"], propertyLevel: { read: [...r.properties] } })),
-  Mentor: RESOURCES.map(r => ({ resource: r.name, actions: ["read","approve","reject"], propertyLevel: { read: [...r.properties] } })),
-};
-
-// --- Helper ---
-const getPermissionColor = (action: string) => {
-  const colors: { [key: string]: string } = {
+const uid = (p = "") => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const actionBadge = (a: string) =>
+  ({
     create: "bg-green-100 text-green-800",
     read: "bg-blue-100 text-blue-800",
     update: "bg-yellow-100 text-yellow-800",
     delete: "bg-red-100 text-red-800",
-    activate: "bg-green-100 text-green-800",
-    deactivate: "bg-red-100 text-red-800",
-    draft: "bg-gray-100 text-gray-800",
+    activate: "bg-green-50 text-green-700",
+    deactivate: "bg-red-50 text-red-700",
     apply: "bg-purple-100 text-purple-800",
     approve: "bg-green-100 text-green-800",
     reject: "bg-red-100 text-red-800",
     assign_role: "bg-indigo-100 text-indigo-800",
+  }[a] || "bg-gray-100 text-gray-800");
+
+const INIT_RES: ResourceDef[] = [
+  { id: "r_college", name: "College", actions: ["create","read","update","delete","activate","deactivate"], properties: ["college_id","name","address","city","state","pincode","thumbnail_image","website","status"] },
+  { id: "r_department", name: "Department", actions: ["create","read","update","delete","activate","deactivate"], properties: ["dep_id","college_id","dep_name","dep_code","hod_id","status"] },
+  { id: "r_semester", name: "Semester", actions: ["create","read","update","delete","activate","deactivate"], properties: ["sem_id","dep_id","name","number","academic_year_id","status"] },
+  { id: "r_subject", name: "Subject", actions: ["create","read","update","delete","activate","deactivate"], properties: ["sub_id","sem_id","name","code","status"] },
+  { id: "r_internship", name: "Internship", actions: ["create","read","update","delete","apply","approve","reject","activate","deactivate"], properties: ["internship_id","type","title","description","duration","start_date","end_date","status"] },
+  { id: "r_user", name: "User", actions: ["create","read","update","delete","activate","deactivate","assign_role"], properties: ["user_id","name","email","password","role","college_id","dep_id","status"] },
+  { id: "r_studymaterial", name: "Study Material", actions: ["create","read","update","delete","activate","deactivate"], properties: ["material_id","sub_id","title","file_url","uploaded_by","status"] },
+];
+
+export default function AdminRolesPermissionMatrix() {
+  const [resources, setResources] = useState(INIT_RES);
+  const [selectedId, setSelectedId] = useState(resources[0].id);
+  const [autoSave, setAutoSave] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [modal, setModal] = useState(false);
+  const [editRes, setEditRes] = useState<ResourceDef | null>(null);
+  const [form, setForm] = useState({ name: "", actions: "", props: "" });
+
+  const initPerms = useMemo(() => {
+    const base: PermissionsByResource = {};
+    for (const r of INIT_RES) {
+      base[r.id] = {} as any;
+      for (const role of ROLES)
+        base[r.id][role] = {
+          actions: role === "Admin" ? [...r.actions] : [],
+          properties: role === "Admin" ? [...r.properties] : [],
+        };
+    }
+    return base;
+  }, []);
+
+  const [perms, setPerms] = useState(initPerms);
+  const res = resources.find((r) => r.id === selectedId)!;
+
+  const ensurePerms = (r: ResourceDef) =>
+    setPerms((p) => {
+      const c = { ...p };
+      c[r.id] ??= {} as any;
+      for (const role of ROLES) {
+        const cur = c[r.id][role] || { actions: [], properties: [] };
+        c[r.id][role] = {
+          actions: role === "Admin" ? r.actions : cur.actions.filter((a) => r.actions.includes(a)),
+          properties: role === "Admin" ? r.properties : cur.properties.filter((p) => r.properties.includes(p)),
+        };
+      }
+      return c;
+    });
+
+  const openAdd = () => {
+    setEditRes(null);
+    setForm({ name: "", actions: "create,read,update,delete", props: "id,name" });
+    setModal(true);
   };
-  return colors[action] || "bg-gray-100 text-gray-800";
-};
-
-// --- Component ---
-export function AdminRolesView() {
-  const [roles, setRoles] = useState<Role[]>([
-    { id: "1", name: "Admin", description: "Full system access", permissions: DEFAULT_ROLE_PERMISSIONS.Admin, userCount: 1 },
-    { id: "2", name: "HOD", description: "Department head access", permissions: DEFAULT_ROLE_PERMISSIONS.HOD, userCount: 3 },
-    { id: "3", name: "Teacher", description: "Teacher access", permissions: DEFAULT_ROLE_PERMISSIONS.Teacher, userCount: 10 },
-    { id: "4", name: "Student", description: "Student access", permissions: DEFAULT_ROLE_PERMISSIONS.Student, userCount: 50 },
-    { id: "5", name: "Mentor", description: "Mentor access", permissions: DEFAULT_ROLE_PERMISSIONS.Mentor, userCount: 5 },
-  ]);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [newRole, setNewRole] = useState({ name: "", description: "" });
-
-  const roleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-  const filteredRoles = roles.filter(r =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSelectRole = (roleId: string) => {
-    setSelectedRoleId(roleId);
-    setSearchTerm(roles.find(r=>r.id===roleId)?.name || "");
-    setTimeout(()=> roleRefs.current[roleId]?.scrollIntoView({ behavior:"smooth", block:"start" }), 100);
+  const openEdit = (r: ResourceDef) => {
+    setEditRes(r);
+    setForm({ name: r.name, actions: r.actions.join(","), props: r.properties.join(",") });
+    setModal(true);
   };
 
-  // --- Role CRUD & Permissions ---
-  const deleteRole = (id: string) => setRoles(roles.filter(r=>r.id!==id));
-  const startEditRole = (role: Role) => { setEditingRole({...role}); setSelectedRoleId(role.id); };
-  const cancelEdit = () => setEditingRole(null);
-  const saveRole = () => { if(editingRole){ setRoles(roles.map(r=>r.id===editingRole.id?editingRole:r)); setEditingRole(null); } };
-  const addNewRole = () => { if(newRole.name.trim()){ setRoles([...roles, { id:Date.now().toString(), name:newRole.name, description:newRole.description, permissions:RESOURCES.map(r=>({ resource:r.name, actions:[], propertyLevel:{} })), userCount:0 }]); setNewRole({name:"", description:""}); } };
-  const togglePermission = (roleId:string, resource:string, action:string) => { setRoles(roles.map(role=>{ if(role.id===roleId && role.name!=="Admin"){ const resPerm = role.permissions.find(p=>p.resource===resource); if(resPerm){ const has = resPerm.actions.includes(action); return {...role, permissions: role.permissions.map(p=>p.resource===resource?{...p, actions:has?p.actions.filter(a=>a!==action):[...p.actions, action]}:p)}; } } return role; })); };
-  const toggleAllActions = (roleId:string, resource:string, enable:boolean) => { setRoles(roles.map(role=>{ if(role.id===roleId && role.name!=="Admin"){ const allActions = enable ? RESOURCES.find(r=>r.name===resource)!.actions : []; return {...role, permissions: role.permissions.map(p=>p.resource===resource?{...p, actions:allActions}:p)}; } return role; })); };
-  const togglePropertyPermission = (roleId:string, resource:string, action:string, property:string, checked:boolean) => { setRoles(roles.map(role=>{ if(role.id===roleId && role.name!=="Admin"){ return {...role, permissions: role.permissions.map(p=>{ if(p.resource===resource){ const current = p.propertyLevel?.[action]||[]; const updated = checked?[...new Set([...current, property])]:current.filter(pr=>pr!==property); return {...p, propertyLevel:{...p.propertyLevel, [action]:updated}} } return p; })}; } return role; })); };
-  const hasPermission = (role:Role, resource:string, action:string) => role.name==="Admin"?true:role.permissions.find(p=>p.resource===resource)?.actions.includes(action)||false;
-  const hasFullAccess = (role:Role, resource:string) => role.name==="Admin"?true:RESOURCES.find(r=>r.name===resource)?.actions.every(a=>role.permissions.find(p=>p.resource===resource)?.actions.includes(a));
+  const saveRes = () => {
+    const name = form.name.trim(),
+      a = form.actions.split(",").map((x) => x.trim()).filter(Boolean),
+      p = form.props.split(",").map((x) => x.trim()).filter(Boolean);
+    if (!name || !a.length) return alert("Enter name & actions");
+    if (editRes) {
+      setResources((r) => r.map((x) => (x.id === editRes.id ? { ...x, name, actions: a, properties: p } : x)));
+      ensurePerms({ ...editRes, name, actions: a, properties: p });
+    } else {
+      const newRes = { id: uid("r_"), name, actions: a, properties: p };
+      setResources((r) => [newRes, ...r]);
+      ensurePerms(newRes);
+      setSelectedId(newRes.id);
+    }
+    setModal(false);
+    setEditRes(null);
+    setDirty(true);
+    if (autoSave) saveAll();
+  };
+
+  const delRes = (id: string) => {
+    if (!confirm("Delete resource?")) return;
+    setResources((r) => r.filter((x) => x.id !== id));
+    setPerms((p) => {
+      const c = { ...p };
+      delete c[id];
+      return c;
+    });
+    setSelectedId(resources[0]?.id || "");
+    setDirty(true);
+    if (autoSave) saveAll();
+  };
+
+  const toggle = (role: RoleName, act: string) => {
+    if (role === "Admin") return;
+    setPerms((p) => {
+      const c = { ...p },
+        rp = { ...c[selectedId][role] };
+      rp.actions = rp.actions.includes(act)
+        ? rp.actions.filter((x) => x !== act)
+        : [...rp.actions, act];
+      c[selectedId][role] = rp;
+      return c;
+    });
+    setDirty(true);
+    if (autoSave) saveAll();
+  };
+
+  const toggleAll = (role: RoleName, checked: boolean) => {
+    if (role === "Admin") return;
+    setPerms((p) => ({
+      ...p,
+      [selectedId]: {
+        ...p[selectedId],
+        [role]: { ...p[selectedId][role], actions: checked ? [...res.actions] : [] },
+      },
+    }));
+    setDirty(true);
+    if (autoSave) saveAll();
+  };
+
+  const toggleProp = (role: RoleName, prop: string, checked: boolean) => {
+    if (role === "Admin") return;
+    setPerms((p) => {
+      const c = { ...p },
+        rp = { ...c[selectedId][role] };
+      rp.properties = checked
+        ? [...new Set([...rp.properties, prop])]
+        : rp.properties.filter((x) => x !== prop);
+      c[selectedId][role] = rp;
+      return c;
+    });
+    setDirty(true);
+    if (autoSave) saveAll();
+  };
+
+  const toggleAllProps = (role: RoleName, ckd: boolean) => {
+    if (role === "Admin") return;
+    setPerms((p) => ({
+      ...p,
+      [selectedId]: {
+        ...p[selectedId],
+        [role]: { ...p[selectedId][role], properties: ckd ? [...res.properties] : [] },
+      },
+    }));
+    setDirty(true);
+    if (autoSave) saveAll();
+  };
+
+  const saveAll = () => {
+    console.log("Saved:", perms);
+    setDirty(false);
+  };
 
   return (
     <div className="space-y-6">
-
-      {/* Search + Dropdown */}
-      <Card className="sticky top-0 z-50 bg-white">
-        <CardHeader><CardTitle>Search / Select Role</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <Input placeholder="Type role name..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
-          <select className="w-full border rounded p-2 mt-1" value={selectedRoleId||""} onChange={e=>handleSelectRole(e.target.value)}>
-            <option value="">-- Select Role --</option>
-            {filteredRoles.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </CardContent>
-      </Card>
-
-      {/* Add Role */}
+      {/* Top controls */}
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="w-5 h-5"/> Add New Role</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div><Label>Role Name</Label><Input placeholder="Enter role name" value={newRole.name} onChange={e=>setNewRole({...newRole,name:e.target.value})}/></div>
-            <div><Label>Description</Label><Input placeholder="Enter description" value={newRole.description} onChange={e=>setNewRole({...newRole,description:e.target.value})}/></div>
+        <CardHeader><CardTitle>Resources</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="border rounded p-2 flex-1">
+              {resources.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+            <Button variant="ghost" onClick={openAdd}><Plus className="w-4 h-4" /> Add</Button>
+            <Button variant="ghost" onClick={() => openEdit(res)}><Pencil className="w-4 h-4" /> Edit</Button>
+            <Button variant="ghost" className="text-red-600" onClick={() => delRes(res.id)}><Trash2 className="w-4 h-4" /> Delete</Button>
           </div>
-          <Button className="w-full" onClick={addNewRole}><Plus className="w-4 h-4 mr-2"/> Add Role</Button>
+          <div className="flex gap-4 items-center">
+            <label className="flex items-center gap-2 text-sm">
+              Auto Save <Switch checked={autoSave} onCheckedChange={setAutoSave} />
+            </label>
+            <Button onClick={saveAll} disabled={!dirty}><Save className="w-4 h-4" /> Save</Button>
+            {dirty && <Badge variant="secondary">Unsaved</Badge>}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Role List */}
-      <div className="max-h-[600px] overflow-y-auto space-y-4">
-        {filteredRoles.map(role=>(
-          <Card key={role.id} ref={el=>roleRefs.current[role.id]=el} className={`p-6 ${selectedRoleId===role.id?"ring-2 ring-purple-500":""}`}>
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-6 h-6 text-purple-600"/>
-                  <div>
-                    <h3 className="text-xl font-semibold">{role.name}</h3>
-                    <p className="text-sm text-gray-600">{role.description}</p>
-                  </div>
-                </div>
-                <Badge variant="secondary">{role.userCount} users</Badge>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={()=>startEditRole(role)}><Edit className="w-4 h-4"/></Button>
-                {role.name!=="Admin" && <Button variant="outline" size="sm" className="text-red-600" onClick={()=>deleteRole(role.id)}><Trash2 className="w-4 h-4"/></Button>}
-              </div>
-            </div>
+      {/* Permission Table */}
+      <Card>
+        <CardHeader><CardTitle>Permissions for: {res.name}</CardTitle></CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border-collapse">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-3 text-left">Role</th>
+                  {res.actions.map((a) => <th key={a} className="p-2 text-center"><Badge className={actionBadge(a)}>{a}</Badge></th>)}
+                  <th className="p-2 text-center">All</th>
+                  <th className="p-2 text-left">Properties</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROLES.map((r) => {
+                  const pr = perms[selectedId][r];
+                  const allA = pr.actions.length === res.actions.length;
+                  const allP = pr.properties.length === res.properties.length;
+                  return (
+                    <tr key={r} className="border-b">
+                      <td className="p-3 font-medium">{r}</td>
+                      {res.actions.map((a) => (
+                        <td key={a} className="p-2 text-center">
+                          <Switch checked={pr.actions.includes(a)} onCheckedChange={() => toggle(r, a)} disabled={r === "Admin"} />
+                        </td>
+                      ))}
+                      <td className="p-2 text-center"><Switch checked={allA} onCheckedChange={(v) => toggleAll(r, v)} disabled={r === "Admin"} /></td>
+                      <td className="p-2">
+                        <details className="border rounded">
+                          <summary className="px-3 py-2 bg-gray-50 flex justify-between cursor-pointer">
+                            <span>({pr.properties.length})</span><span>▼</span>
+                          </summary>
+                          <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                            <label className="flex gap-2 items-center text-xs">
+                              <input type="checkbox" checked={allP} onChange={(e) => toggleAllProps(r, e.target.checked)} disabled={r === "Admin"} />
+                              <b>Select All</b>
+                            </label>
+                            {res.properties.map((p) => (
+                              <label key={p} className="flex gap-2 items-center text-xs">
+                                <input type="checkbox" checked={pr.properties.includes(p)} onChange={(e) => toggleProp(r, p, e.target.checked)} disabled={r === "Admin"} />
+                                {p}
+                              </label>
+                            ))}
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Permissions */}
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg">Permissions</h4>
-              <div className="grid gap-6">
-                {RESOURCES.map(resource=>(
-                  <div key={resource.name} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <h5 className="font-medium text-lg">{resource.name}</h5>
-                      {role.name!=="Admin" && <div className="flex items-center gap-2"><Switch checked={hasFullAccess(role,resource.name)} onCheckedChange={checked=>toggleAllActions(role.id,resource.name,checked)}/><span className="text-xs">Enable All</span></div>}
-                    </div>
-                    <div className="flex flex-wrap gap-3 mb-3">{resource.actions.map(action=>(
-                      <div key={action} className="flex items-center gap-2">
-                        <Switch checked={hasPermission(role,resource.name,action)} onCheckedChange={()=>togglePermission(role.id,resource.name,action)} disabled={role.name==="Admin"} />
-                        <Badge variant="outline" className={`text-xs capitalize ${getPermissionColor(action)}`}>{action.replace("_"," ")}</Badge>
-                      </div>
-                    ))}</div>
-                    <div>
-                      <h6 className="text-sm font-medium text-gray-700 mb-1">Property-Level Access (Read)</h6>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">{resource.properties.map(prop=>(
-                        <div key={prop} className="flex items-center gap-2">
-                          <Switch checked={role.name==="Admin"?true:role.permissions.find(p=>p.resource===resource.name)?.propertyLevel?.read?.includes(prop)||false} onCheckedChange={checked=>togglePropertyPermission(role.id,resource.name,"read",prop,checked)} disabled={role.name==="Admin"}/>
-                          <span className="text-xs">{prop}</span>
-                        </div>
-                      ))}</div>
-                    </div>
-                  </div>
-                ))}
+      {/* Add/Edit Modal */}
+      {modal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded shadow-lg w-full max-w-lg">
+            <div className="flex justify-between p-4 border-b">
+              <h3 className="font-semibold">{editRes ? "Edit Resource" : "Add Resource"}</h3>
+              <X className="w-5 h-5 cursor-pointer" onClick={() => setModal(false)} />
+            </div>
+            <div className="p-4 space-y-3">
+              {["name", "actions", "props"].map((f, i) => (
+                <div key={f}>
+                  <Label>{["Name", "Actions (comma)", "Properties (comma)"][i]}</Label>
+                  <input
+                    className="border rounded p-2 w-full"
+                    value={(form as any)[f]}
+                    onChange={(e) => setForm({ ...form, [f]: e.target.value })}
+                  />
+                </div>
+              ))}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setModal(false)}>Cancel</Button>
+                <Button onClick={saveRes}><Save className="w-4 h-4 mr-1" /> Save</Button>
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
